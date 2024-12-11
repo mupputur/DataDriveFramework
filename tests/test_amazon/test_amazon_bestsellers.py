@@ -1,19 +1,9 @@
 import pytest
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
+from .chromedriver_path import driver
 from selenium.webdriver.common.by import By
 import time
 import tabulate
-
-
-# Path to ChromeDriver
-@pytest.fixture(scope="module")
-def driver():
-    s = Service(executable_path="C:\\Users\\DELL\\Downloads\\chromedriver-win64\\chromedriver-win64\\chromedriver.exe")
-    driver = webdriver.Chrome(service=s)
-    driver.maximize_window()
-    yield driver
-    driver.quit()
+from .product_items import get_product_details
 
 
 @pytest.fixture(scope="module")
@@ -33,21 +23,11 @@ def product_links(driver):
         links.append(link)
     return links
 
-
-def get_product_details(driver, url):
-
-    driver.get(url)
-    time.sleep(2)
-    product_title = driver.find_element(By.XPATH, "//*[@id='productTitle']").text
-    price = driver.find_element(By.XPATH, "//*[@class='a-section a-spacing-none aok-align-center aok-relative']").text
-    brand = driver.find_element(By.XPATH, "(//*[@class='a-size-medium a-text-bold'])[3]").text
-    return product_title, price, brand
-
-
 def test_extract_product_details(driver, product_links):
     # Extract details for first 6 products
+    max_products_to_fetch = min(6, len(product_links))
     product_data = []
-    for url in product_links[:6]:  # Limit to first 6 products
+    for url in product_links[:max_products_to_fetch]:
         title, price, brand = get_product_details(driver, url)
         product_data.append([title, price, brand])
 
@@ -57,4 +37,5 @@ def test_extract_product_details(driver, product_links):
     print(tabulate.tabulate(product_data, headers=headers, tablefmt="grid"))
 
     # Assert to ensure data is extracted
-    assert len(product_data) == 6, "Not all product details were extracted."
+    assert len(product_data) == max_products_to_fetch, "Failed to extract product details for all links."
+
