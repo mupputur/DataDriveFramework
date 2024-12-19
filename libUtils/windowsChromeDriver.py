@@ -3,78 +3,88 @@ import requests
 import os
 import zipfile
 
-def get_chrome_version():   #    Get the Chrome browser version installed on Windows.
-    try:
-        output = subprocess.check_output(
-            r'reg query "HKEY_CURRENT_USER\Software\Google\Chrome\BLBeacon" /v version',
-            shell=True,
-            encoding='utf-8'
-        )
-        # Extract version from the command output
-        version = output.split()[-1]
-        print(f"Chrome Version: {version}")
-        return version
+class BrowserManager:
+    def __init__(self,extract_dir=".//dependencies//chrome-driver"):
+        self.extract_dir = extract_dir
+    def get_chrome_version(self):   #    Get the Chrome browser version installed on Windows.
+        try:
+            output = subprocess.check_output(
+                r'reg query "HKEY_CURRENT_USER\Software\Google\Chrome\BLBeacon" /v version',
+                shell=True,
+                encoding='utf-8'
+            )
+            # Extract version from the command output
+            version = output.split()[-1]
+            print(f"Chrome Version: {version}")
+            return version
 
-    except Exception as e:
-        print(f"Error getting Chrome version: {e}")
-        return None
+        except Exception as e:
+            raise Exception(f"Error getting Chrome version: {e}")
 
-def get_chrome_driver_download_url(chrome_version):
-    """Get the download URL for the ChromeDriver matching the Chrome version."""
-    download_url = f"https://storage.googleapis.com/chrome-for-testing-public/{chrome_version}/win64/chromedriver-win64.zip"
-    print(f"Download URL: {download_url}")
-    response = requests.head(download_url)
+    def get_chrome_driver_download_url(self, chrome_version):
+        try:
+            if not chrome_version:
+                raise Exception("Chrome version is required to fetch the download URL.")
 
-    if response.status_code == 200:
-        return download_url
-    else:
-        raise Exception(f"Failed to get ChromeDriver version for Chrome {chrome_version}")
+            download_url = f"https://storage.googleapis.com/chrome-for-testing-public/{chrome_version}/win64/chromedriver-win64.zip"
+            print(f"Download URL: {download_url}")
 
-def download_and_extract_chromedriver(download_url, extract_dir=".//dependencies//chrome-driver"):
-    """Download and extract the ChromeDriver zip file."""
-    try:
-        response = requests.get(download_url, stream=True)
-        if response.status_code == 200:
-            zip_path = "chromedriver.zip"
+            response = requests.head(download_url)
 
-            with open(zip_path, 'wb') as file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    file.write(chunk)
+            if response.status_code != 200:
+                raise Exception(
+                    f"Failed to get ChromeDriver for Chrome {chrome_version}. HTTP Status Code: {response.status_code}")
 
-            print(f"Downloaded ChromeDriver zip: {zip_path}")
+            return download_url
+        except Exception as e:
+            raise Exception(f"Error getting ChromeDriver download URL: {e}")
 
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(extract_dir)
-                print(f"Extracted ChromeDriver to: {extract_dir}")
+    def download_and_extract_chromedriver(self,download_url):
+        """Download and extract the ChromeDriver zip file."""
+        try:
+            response = requests.get(download_url, stream=True)
+            if response.status_code == 200:
+                zip_path = "chromedriver.zip"
 
-            os.remove(zip_path)
+                with open(zip_path, 'wb') as file:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        file.write(chunk)
 
-            print(f"ChromeDriver is ready at {extract_dir}\\chromedriver.exe")
-            return True
+                print(f"Downloaded ChromeDriver zip: {zip_path}")
 
-        else:
-            raise Exception(f"Failed to download ChromeDriver from {download_url}")
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(self.extract_dir)
+                    print(f"Extracted ChromeDriver to: {self.extract_dir}")
 
-    except Exception as e:
-        print(f"Error downloading ChromeDriver: {e}")
-        return False
+                os.remove(zip_path)
+
+                print(f"ChromeDriver is ready at {self.extract_dir}\\chromedriver.exe")
+                return True
+
+            else:
+                raise Exception(f"Failed to download ChromeDriver from {download_url}")
+
+        except Exception as e:
+            print(f"Error downloading ChromeDriver: {e}")
+            return False
 
 
 if __name__ == "__main__":
+    manager = BrowserManager()
     # Get Chrome version
-    chrome_version = get_chrome_version()
+    chrome_version = manager.get_chrome_version()
     if not chrome_version:
         print("Failed to get Chrome version.")
         exit(1)
 
-    # Get ChromeDriver download URL
-    download_url = get_chrome_driver_download_url(chrome_version)
+        # Get ChromeDriver download URL
+    download_url = manager.get_chrome_driver_download_url(chrome_version)
     if not download_url:
         print("Failed to get ChromeDriver download URL.")
         exit(1)
 
-    # Download and extract ChromeDriver
-    success = download_and_extract_chromedriver(download_url)
+        # Download and extract ChromeDriver
+    success = manager.download_and_extract_chromedriver(download_url)
     if success:
         print("ChromeDriver is set up successfully!")
     else:
