@@ -35,7 +35,6 @@ class BrowserManager:
             return download_url
         except Exception as e:
             print(f"status code and response HTTP status code: response.status_code")
-
             raise Exception(f"Error getting ChromeDriver download URL: {e}")
 
     def download_zip_file(self, download_url):
